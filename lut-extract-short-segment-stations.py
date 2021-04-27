@@ -81,9 +81,9 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 #------------------------------------------------------------------------------
 
 fontsize = 20
-plot_station_locations = True
-plot_climgen_categories = True
-plot_continent_stations = True
+plot_station_locations = False
+plot_climgen_categories = False
+plot_continent_stations = False
 extract_stations = True
 shade_continent = False
 show_gridlines = True
@@ -101,13 +101,13 @@ shapefilename = shapereader.natural_earth(resolution, category, name)
 
 # GeoPandas Continents
 
-# continent = 'Africa'
+continent = 'Africa'
 # continent = 'Antarctica'
 # continent = 'Asia'
 # continent = 'Europe'
 # continent = 'North America'
 # continent = 'Oceania'
-continent = 'South America'
+# continent = 'South America'
 
 # cnt.spec Continents
 
@@ -241,7 +241,7 @@ ds_lonlat = pd.concat([dt_lonlat,da_lonlat]).drop_duplicates(keep=False)
 if extract_stations == True:
 
     #------------------------------------------------------------------------------
-    # EXTRACT: stations in continent
+    # EXTRACT: stations in continent and write absolutes, anomalies and short-segment station lists to CSV
     #------------------------------------------------------------------------------
 
     print('extract_stations ...')
@@ -258,6 +258,8 @@ if extract_stations == True:
 
     # EXTRACT: short-segment series in continent    
     
+    decimalplaces = 1  
+    
     ds_stationcode_in_continent = []
     ds_lat_in_continent = []
     ds_lon_in_continent = []    
@@ -266,8 +268,10 @@ if extract_stations == True:
         if g.contains(p).any() == True:
             ds_stationcode_in_continent.append(ds_lonlat.index[i])
             ds_lat_in_continent.append(ds_lonlat.lat[i])
-            ds_lon_in_continent.append(ds_lonlat.lon[i])
-    ds_in_continent = pd.DataFrame({'stationcode':ds_stationcode_in_continent, 'stationlat':ds_lat_in_continent, 'stationlon':ds_lon_in_continent})
+            ds_lon_in_continent.append(ds_lonlat.lon[i])            
+    ds_lat_in_continent = pd.Series(ds_lat_in_continent).apply(lambda x: round(x, decimalplaces))
+    ds_lon_in_continent = pd.Series(ds_lon_in_continent).apply(lambda x: round(x, decimalplaces))
+    ds_in_continent = pd.DataFrame({'stationcode':ds_stationcode_in_continent, 'stationlat':ds_lat_in_continent, 'stationlon':ds_lon_in_continent}).reset_index(drop=True)
     ds_filestr = 'ds'+'_'+ continent.lower().replace(' ','_') +'.csv'
     ds_in_continent.to_csv(ds_filestr)
 
@@ -282,7 +286,9 @@ if extract_stations == True:
             da_stationcode_in_continent.append(da_lonlat.index[i])
             da_lat_in_continent.append(da_lonlat.lat[i])
             da_lon_in_continent.append(da_lonlat.lon[i])
-    da_in_continent = pd.DataFrame({'stationcode':da_stationcode_in_continent, 'stationlat':da_lat_in_continent, 'stationlon':da_lon_in_continent})
+    da_lat_in_continent = pd.Series(da_lat_in_continent).apply(lambda x: round(x, decimalplaces))
+    da_lon_in_continent = pd.Series(da_lon_in_continent).apply(lambda x: round(x, decimalplaces))
+    da_in_continent = pd.DataFrame({'stationcode':da_stationcode_in_continent, 'stationlat':da_lat_in_continent, 'stationlon':da_lon_in_continent}).reset_index(drop=True)
     da_filestr = 'da'+'_'+ continent.lower().replace(' ','_') +'.csv'
     da_in_continent.to_csv(da_filestr)
 
@@ -297,7 +303,9 @@ if extract_stations == True:
             dt_stationcode_in_continent.append(dt_lonlat.index[i])
             dt_lat_in_continent.append(dt_lonlat.lat[i])
             dt_lon_in_continent.append(dt_lonlat.lon[i])
-    dt_in_continent = pd.DataFrame({'stationcode':dt_stationcode_in_continent, 'stationlat':dt_lat_in_continent, 'stationlon':dt_lon_in_continent})
+    dt_lat_in_continent = pd.Series(dt_lat_in_continent).apply(lambda x: round(x, decimalplaces))
+    dt_lon_in_continent = pd.Series(dt_lon_in_continent).apply(lambda x: round(x, decimalplaces))
+    dt_in_continent = pd.DataFrame({'stationcode':dt_stationcode_in_continent, 'stationlat':dt_lat_in_continent, 'stationlon':dt_lon_in_continent}).reset_index(drop=True)
     dt_filestr = 'dt'+'_'+ continent.lower().replace(' ','_') +'.csv'
     dt_in_continent.to_csv(dt_filestr)
                 
