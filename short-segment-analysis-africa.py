@@ -3,8 +3,8 @@
 #-----------------------------------------------------------------------
 # PROGRAM: short-segment-analysis-africa.py
 #-----------------------------------------------------------------------
-# Version 0.1
-# 27 April, 2021
+# Version 0.2
+# 30 April, 2021
 # Dr Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -89,13 +89,14 @@ def gamma_fit(y):
 # SETTINGS
 #------------------------------------------------------------------------------
 
-fontsize = 16
+fontsize = 18
 ma_smooth = 12
 startyear_20CRv3 = '1806'
 plot_schematic = True
 plot_comparisons = True
 plot_continent_mean = True
 plot_gamma_fit = True
+use_k_start = False
 
 #------------------------------------------------------------------------------
 # LOAD: lists of continent stationcodes
@@ -108,6 +109,11 @@ dt_continent_stationcodes = pd.read_csv(dt_continent_file).stationcode.astype(st
 da_continent_stationcodes = pd.read_csv(da_continent_file).stationcode.astype(str)
 ds_continent_stationcodes = pd.read_csv(ds_continent_file).stationcode.astype(str)
 
+dt_continent_stationcodes = pd.Series(['039172']) # Armagh Observatory
+#dt_continent_stationcodes = pd.Series(['450050']) # Hong Kong
+#dt_continent_stationcodes = pd.Series(['716121']) # St Lawrence Valley
+#dt_continent_stationcodes = pd.Series(['946720']) # Adelaide
+
 print('N(stations)='+str(len(dt_continent_stationcodes)))
 print('M(normals)='+str(dt_continent_stationcodes.isin(da_continent_stationcodes).sum()))
 print('M(short-segments)='+str(dt_continent_stationcodes.isin(ds_continent_stationcodes).sum()))
@@ -118,11 +124,6 @@ df_diff_model = pd.DataFrame()
 df_20CRv3 = pd.DataFrame()
 df_GloSAT = pd.DataFrame()
 df_model = pd.DataFrame()
-
-#dt_continent_stationcodes = ['716121'] # St Lawrence Valley
-#dt_continent_stationcodes = ['946720'] # Adelaide
-#dt_continent_stationcodes = ['450050'] # Hong Kong
-dt_continent_stationcodes = ['039172'] # Armagh Observatory
 
 #------------------------------------------------------------------------------
 # LOAD: GloSAT absolute temperaturs and anomalies dataframes
@@ -145,13 +146,46 @@ N = len(lat)*len(lon)
 x = X.reshape(N)
 y = Y.reshape(N)
 dlatlon = pd.DataFrame({'lon':x, 'lat':y}, index=range(N))    
-    
+
+#------------------------------------------------------------------------------
+# LOAD: 20CRv3 ensemble stats
+#------------------------------------------------------------------------------
+
+de_mean = xr.open_dataset('DATA/ensemble_anomalies_africa_mean.nc', decode_cf=True)
+de_pctl_05 = xr.open_dataset('DATA/ensemble_anomalies_africa_pctl_05.nc', decode_cf=True)
+de_pctl_50 = xr.open_dataset('DATA/ensemble_anomalies_africa_pctl_50.nc', decode_cf=True)
+de_pctl_95 = xr.open_dataset('DATA/ensemble_anomalies_africa_pctl_95.nc', decode_cf=True)
+
+ts_mean = de_mean.TMP2m[:,0,0,0]
+t = de_mean.TMP2m[:,0,0,0].time
+t_mean = pd.date_range(start=str(t[0].values)[0:4], periods=len(t), freq='M')   
+de_mean = pd.DataFrame({'t':t_mean,'ts':ts_mean})
+
+ts_pctl_05 = de_pctl_05.TMP2m[:,0,0,0]
+t = de_pctl_05.TMP2m[:,0,0,0].time
+t_pctl_05 = pd.date_range(start=str(t[0].values)[0:4], periods=len(t), freq='M')   
+de_pctl_05 = pd.DataFrame({'t':t_pctl_05,'ts':ts_pctl_05})
+
+ts_pctl_50 = de_pctl_50.TMP2m[:,0,0,0]
+t = de_pctl_50.TMP2m[:,0,0,0].time
+t_pctl_50 = pd.date_range(start=str(t[0].values)[0:4], periods=len(t), freq='M')   
+de_pctl_50 = pd.DataFrame({'t':t_pctl_50,'ts':ts_pctl_50})
+
+ts_pctl_95 = de_pctl_95.TMP2m[:,0,0,0]
+t = de_pctl_95.TMP2m[:,0,0,0].time
+t_pctl_95 = pd.date_range(start=str(t[0].values)[0:4], periods=len(t), freq='M')   
+de_pctl_95 = pd.DataFrame({'t':t_pctl_95,'ts':ts_pctl_95})    
+
 #------------------------------------------------------------------------------
 # LOOP: over all stations in dt_continent_stationcodes
 #------------------------------------------------------------------------------
 
 n_stations = len(dt_continent_stationcodes)
-for k in range(n_stations):
+if use_k_start == True:
+    k_start = 740
+else:
+    k_start = 0    
+for k in range(k_start, n_stations):
 
     station_code = dt_continent_stationcodes[k]
     if n_stations > 1:
@@ -373,6 +407,22 @@ for k in range(n_stations):
     #------------------------------------------------------------------------------
     # SAVE: result
     #------------------------------------------------------------------------------
+
+    if use_k_start == True:
+        
+        k == k_start
+        df_diff_20CRv3 = pd.read_csv('df_diff_20CRv3.csv', index_col=0)
+        df_diff_GloSAT = pd.read_csv('df_diff_GloSAT.csv', index_col=0)
+        df_diff_model = pd.read_csv('df_diff_model.csv', index_col=0)
+        df_20CRv3 = pd.read_csv('df_20CRv3.csv', index_col=0)
+        df_GloSAT = pd.read_csv('df_GloSAT.csv', index_col=0)
+        df_model = pd.read_csv('df_model.csv', index_col=0)               
+        df_diff_20CRv3.index = pd.to_datetime(df_diff_20CRv3.index)
+        df_diff_GloSAT.index = pd.to_datetime(df_diff_GloSAT.index)
+        df_diff_model.index = pd.to_datetime(df_diff_model.index)
+        df_20CRv3.index = pd.to_datetime(df_20CRv3.index)
+        df_GloSAT.index = pd.to_datetime(df_GloSAT.index)
+        df_model.index = pd.to_datetime(df_model.index)
     
     df_diff_20CRv3[station_code] = df['short_segment_20CRv3_anomaly'] - df['short_segment_station_anomaly']    
     df_diff_GloSAT[station_code] = df['short_segment_anomaly'] - df['short_segment_station_anomaly'] 
@@ -441,8 +491,8 @@ for k in range(n_stations):
             ax.set_xlim(-8,8)
         #    ax.xaxis.grid(True, which='major')
         #    ax.yaxis.grid(True, which='major')
-            plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=12)    
-            fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)     
+            plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+            fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)     
             plt.ylabel("KDE", fontsize=fontsize)
             plt.xlabel("Anomaly difference, $\mathrm{\degree}C$", fontsize=fontsize)
             plt.title(titlestr, fontsize=fontsize)
@@ -464,28 +514,25 @@ for k in range(n_stations):
             titlestr = 'Africa: 20CRv3 v GloSAT v short-segment model estimate: N(additional stations)='+str(n_model-n_GloSAT)
             
             fig,ax = plt.subplots(figsize=(15,10))
-        #    plt.plot(df_20CRv3, color='pink', ls='-', lw=2, alpha=1.0, zorder=0)
-            plt.plot(df_20CRv3.rolling(12).mean(), color='pink', ls='-', lw=2, alpha=1.0, zorder=0)
-            plt.plot(df_model.rolling(12).mean(), color='lightgreen', ls='-', lw=2, alpha=1.0, zorder=0)
-            plt.plot(df_GloSAT.rolling(12).mean(), color='lightblue', ls='-', lw=2, alpha=1.0, zorder=0)
-            plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
-            plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
-            plt.plot(t_model_continent, ts_model_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
-        #    plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
-        #    plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
-        #    plt.plot(t_model_continent, ts_model_continent.rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
+            plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
+            plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
+            plt.plot(t_model_continent, ts_model_continent.rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
+#            plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
+#            plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
+#            plt.plot(t_model_continent, ts_model_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
+            plt.step(de_pctl_50.t, de_pctl_50.ts.rolling(60).mean(), color='grey', lw=1, ls='--', label='20CRv3 (continent) median: '+str(60)+'m MA')
+            plt.fill_between(de_pctl_05.t, de_pctl_05.ts.rolling(60).mean(), de_pctl_95.ts.rolling(60).mean(), alpha=0.1, color='black', lw=1, label='20CRv3 (continent) 5-95% c.i.: '+str(60)+'m MA')
             plt.tick_params(labelsize=fontsize)   
             plt.tick_params(labelsize=fontsize)        
             plt.axhline(y=0)
-            plt.ylim(-4,4)
-            plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-            fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)            
+            plt.ylim(-2,2)
+            plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+            fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)            
             plt.xlabel("Year", fontsize=fontsize)
             plt.ylabel("Temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
             plt.title(titlestr, fontsize=fontsize)
             plt.savefig(figstr, dpi=300)
             plt.close('all')        
-        
         
     #------------------------------------------------------------------------------
     # PLOTS
@@ -539,8 +586,8 @@ for k in range(n_stations):
     #	plt.annotate(s='', xy=(short_segment[ int(len(short_segment)/2) ], np.nanmean(df['short_segment_20CRv3'])), xytext=(short_segment[ int(len(short_segment)/2) ], np.nanmean(df['short_segment_station'])), arrowprops=dict(arrowstyle='<|-|>', ls='-', lw=2, color='blue'))
     
     	plt.tick_params(labelsize=fontsize)   
-    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    	fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)            
+    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    	fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)            
     	plt.xlabel("Year", fontsize=fontsize)
     	plt.ylabel("Absolute temperature, $\mathrm{\degree}C$", fontsize=fontsize)
     	plt.title(titlestr, fontsize=fontsize)
@@ -563,8 +610,8 @@ for k in range(n_stations):
 #    	plt.axhline(y=0)
 #    	ax.xaxis.grid(True, which='major')        
 #    	ax.yaxis.grid(True, which='major')        
-    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    	fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)             
+    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    	fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)             
     	plt.xlabel("Year", fontsize=fontsize)
     	plt.ylabel("Absolute temperature, $\mathrm{\degree}C$", fontsize=fontsize)
     	plt.title(titlestr, fontsize=fontsize)
@@ -587,8 +634,8 @@ for k in range(n_stations):
     	plt.ylim(-8,8)
 #    	ax.xaxis.grid(True, which='major')        
 #    	ax.yaxis.grid(True, which='major')        
-    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    	fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)     
+    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    	fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)     
     	plt.xlabel("Year", fontsize=fontsize)
     	plt.ylabel("Temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
     	plt.title(titlestr, fontsize=fontsize)
@@ -609,8 +656,8 @@ for k in range(n_stations):
 #    	plt.axhline(y=0)
 #    	ax.xaxis.grid(True, which='major')        
 #    	ax.yaxis.grid(True, which='major')        
-    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    	fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)     
+    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    	fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)     
     	plt.xlabel("Year", fontsize=fontsize)
     	plt.ylabel("Absolute temperature, $\mathrm{\degree}C$", fontsize=fontsize)
     	plt.title(titlestr, fontsize=fontsize)
@@ -630,8 +677,8 @@ for k in range(n_stations):
     	plt.ylim(-8,8)
 #    	ax.xaxis.grid(True, which='major')        
 #    	ax.yaxis.grid(True, which='major')        
-    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    	fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)     
+    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    	fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)     
     	plt.xlabel("Year", fontsize=fontsize)
     	plt.ylabel("Difference in absolute temperature, $\mathrm{\degree}C$", fontsize=fontsize)
     	plt.title(titlestr, fontsize=fontsize)
@@ -656,8 +703,8 @@ for k in range(n_stations):
     	plt.ylim(-8,8)
 #    	ax.xaxis.grid(True, which='major')        
 #    	ax.yaxis.grid(True, which='major')        
-    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    	fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)     
+    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    	fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)     
     	plt.xlabel("Year", fontsize=fontsize)
     	plt.ylabel("Temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
     	plt.title(titlestr, fontsize=fontsize)
@@ -677,8 +724,8 @@ for k in range(n_stations):
     	plt.ylim(-8,8)
 #    	ax.xaxis.grid(True, which='major')        
 #    	ax.yaxis.grid(True, which='major')        
-    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    	fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)     
+    	plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    	fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)     
     	plt.xlabel("Year", fontsize=fontsize)
     	plt.ylabel("Difference in temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
     	plt.title(titlestr, fontsize=fontsize)
@@ -740,8 +787,8 @@ if plot_gamma_fit == True:
     ax.set_xlim(-8,8)
 #    ax.xaxis.grid(True, which='major')
 #    ax.yaxis.grid(True, which='major')
-    plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)     
+    plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)     
     plt.ylabel("KDE", fontsize=fontsize)
     plt.xlabel("Anomaly difference, $\mathrm{\degree}C$", fontsize=fontsize)
     plt.title(titlestr, fontsize=fontsize)
@@ -767,22 +814,20 @@ if plot_continent_mean == True:
         titlestr = station_code + ': 20CRv3 v GloSAT v short-segment model estimate: N(additional stations)='+str(n_model-n_GloSAT)
     
     fig,ax = plt.subplots(figsize=(15,10))
-#    plt.plot(df_20CRv3, color='pink', ls='-', lw=2, alpha=1.0, zorder=0)
-    plt.plot(df_20CRv3.rolling(12).mean(), color='pink', ls='-', lw=2, alpha=1.0, zorder=0)
-    plt.plot(df_model.rolling(12).mean(), color='lightgreen', ls='-', lw=2, alpha=1.0, zorder=0)
-    plt.plot(df_GloSAT.rolling(12).mean(), color='lightblue', ls='-', lw=2, alpha=1.0, zorder=0)
-    plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
-    plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
-    plt.plot(t_model_continent, ts_model_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
-#    plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
-#    plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
-#    plt.plot(t_model_continent, ts_model_continent.rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
+    plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
+    plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
+    plt.plot(t_model_continent, ts_model_continent.rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
+#    plt.plot(t_20CRv3_continent, ts_20CRv3_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='red', lw=3, alpha=1.0, zorder=1, label='20CRv3: '+str(60)+'m MA')
+#    plt.plot(t_GloSAT_A_continent, ts_GloSAT_A_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='blue', lw=3, alpha=1.0, zorder=1, label='GloSAT: '+str(60)+'m MA: N(stations)='+str(n_GloSAT))
+#    plt.plot(t_model_continent, ts_model_continent.rolling(60, win_type='triang').mean().rolling(60).mean(), color='green', lw=3, alpha=1.0, zorder=1, label='model: '+str(60)+'m MA: N(stations)='+str(n_model))
+    plt.step(de_pctl_50.t, de_pctl_50.ts.rolling(60).mean(), color='grey', lw=1, ls='--', label='20CRv3 (continent) median: '+str(60)+'m MA')
+    plt.fill_between(de_pctl_05.t, de_pctl_05.ts.rolling(60).mean(), de_pctl_95.ts.rolling(60).mean(), alpha=0.1, color='black', lw=1, label='20CRv3 (continent) 5-95% c.i.: '+str(60)+'m MA')    
     plt.tick_params(labelsize=fontsize)   
     plt.tick_params(labelsize=fontsize)        
     plt.axhline(y=0)
-    plt.ylim(-4,4)
-    plt.legend(loc='lower left', bbox_to_anchor=(0, -0.35), markerscale=1, ncol=1, facecolor='lightgrey', framealpha=1, fontsize=12)    
-    fig.subplots_adjust(left=None, bottom=0.25, right=None, top=None, wspace=None, hspace=None)            
+    plt.ylim(-2,2)
+    plt.legend(loc='lower left', bbox_to_anchor=(0, -0.4), markerscale=1, ncol=2, facecolor='lightgrey', framealpha=1, fontsize=fontsize)    
+    fig.subplots_adjust(left=None, bottom=0.3, right=None, top=None, wspace=None, hspace=None)            
     plt.xlabel("Year", fontsize=fontsize)
     plt.ylabel("Temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
     plt.title(titlestr, fontsize=fontsize)

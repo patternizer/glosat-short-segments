@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: lut-extract-short-segment-stations.py
 #------------------------------------------------------------------------------
-# Version 0.2
-# 25 April, 2021
+# Version 0.4
+# 2 May, 2021
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -81,12 +81,14 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 #------------------------------------------------------------------------------
 
 fontsize = 20
-plot_station_locations = False
-plot_climgen_categories = False
-plot_continent_stations = False
+plot_station_locations = True
+plot_climgen_categories = True
+plot_continent_stations = True
 extract_stations = True
+extract_arctic = False
 shade_continent = False
 show_gridlines = True
+use_climgen = True
 
 # Map settings
 
@@ -108,6 +110,7 @@ continent = 'Africa'
 # continent = 'North America'
 # continent = 'Oceania'
 # continent = 'South America'
+# continent = 'Arctic'
 
 # cnt.spec Continents
 
@@ -167,54 +170,7 @@ df_normals = pd.read_pickle('DATA/df_normals.pkl', compression='bz2')
 #df_temp = df_temp_in[df_temp_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode']) == False]
 df_temp = df_temp_in.copy()
 df_anom = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
-
-#------------------------------------------------------------------------------
-# LOAD: continent specification file from ClimGen and extract lat,lon,cat vectors
-#------------------------------------------------------------------------------
-
-climgen_file = 'DATA/cnt.spec'
-nheader = 363
-nfooter = 9
-f = open(climgen_file)
-lines = f.readlines()
-categories = []
-for i in range(nheader,len(lines)-nfooter):    
-    words = lines[i].split()   
-    categories.append(words)        
-f.close()    
-
-category_vector = np.array([int(categories[i][0]) for i in range(len(categories))])
-#category_array = category_vector.reshape(720, 360)
-
-dc_lon = []
-dc_lat = []
-dc_cat = []
-lon_step = 0.25
-lat_step = 0.25
-for i in range(720):    
-    for j in range(360):
-        dc_lon.append(lon_step+i*0.5-180)
-        dc_lat.append(lat_step+j*0.5-90.0)
-        cat = category_vector[i*360+j]
-        if cat == -999:
-            dc_cat.append(10)        
-        else:
-            dc_cat.append(cat)        
-        
-N = len(dc_cat)        
-dc = pd.DataFrame({'lon':dc_lon, 'lat':dc_lat, 'cat':dc_cat}, index=range(N))
-# dc[dc['lat']<-60.0] = 0
-
-#-----------------------------------------------------------------------------
-# CONSTRUCT: Pandas latloncat dataframe for selected continent
-#-----------------------------------------------------------------------------
-
-dc_lon = dc[dc['cat']==category_keys[continent]]['lon'].reset_index(drop=True)
-dc_lat = dc[dc['cat']==category_keys[continent]]['lat'].reset_index(drop=True)
-dc_cat = dc[dc['cat']==category_keys[continent]]['cat'].reset_index(drop=True)
-
-N = len(dc_cat)
-dlatloncat = pd.DataFrame({'lon':dc_lon, 'lat':dc_lat}, index=range(N))
+df_temp_in = []; df_anom_in = []; df_normals = []
 
 #-----------------------------------------------------------------------------
 # FIND: CLOSEST GRIDCELL (using Haversine distance) + assign cat for stations 
@@ -233,10 +189,60 @@ dt_lonlat = pd.DataFrame({'lon':dt_lon,'lat':dt_lat})
 da_lonlat = pd.DataFrame({'lon':da_lon,'lat':da_lat})
 ds_lonlat = pd.concat([dt_lonlat,da_lonlat]).drop_duplicates(keep=False)
 
-#dt_query = [ find_nearest(dt_lat[i], dt_lon[i], dlatloncat) for i in range(len(dt_lon)) ]
-#dt_nearest_lon = [ query[i][0] for i in range(len(query)) ]
-#dt_nearest_lat = [ query[i][1] for i in range(len(query)) ]
-#dt_nearest_cat = [ dc_cat.unique().astype(int)[0] for i in range(len(query)) ]
+if use_climgen == True:
+    
+    #------------------------------------------------------------------------------
+    # LOAD: continent specification file from ClimGen and extract lat,lon,cat vectors
+    #------------------------------------------------------------------------------
+    
+    climgen_file = 'DATA/cnt.spec'
+    nheader = 363
+    nfooter = 9
+    f = open(climgen_file)
+    lines = f.readlines()
+    categories = []
+    for i in range(nheader,len(lines)-nfooter):    
+        words = lines[i].split()   
+        categories.append(words)        
+    f.close()    
+    
+    category_vector = np.array([int(categories[i][0]) for i in range(len(categories))])
+    #category_array = category_vector.reshape(720, 360)
+    
+    dc_lon = []
+    dc_lat = []
+    dc_cat = []
+    lon_step = 0.25
+    lat_step = 0.25
+    for i in range(720):    
+        for j in range(360):
+            dc_lon.append(lon_step+i*0.5-180)
+            dc_lat.append(lat_step+j*0.5-90.0)
+            cat = category_vector[i*360+j]
+            if cat == -999:
+                dc_cat.append(10)        
+            else:
+                dc_cat.append(cat)        
+            
+    N = len(dc_cat)        
+    dc = pd.DataFrame({'lon':dc_lon, 'lat':dc_lat, 'cat':dc_cat}, index=range(N))
+    # dc[dc['lat']<-60.0] = 0
+    
+    #-----------------------------------------------------------------------------
+    # CONSTRUCT: Pandas latloncat dataframe for selected continent
+    #-----------------------------------------------------------------------------
+    
+    dc_lon = dc[dc['cat']==category_keys[continent]]['lon'].reset_index(drop=True)
+    dc_lat = dc[dc['cat']==category_keys[continent]]['lat'].reset_index(drop=True)
+    dc_cat = dc[dc['cat']==category_keys[continent]]['cat'].reset_index(drop=True)
+    
+    N = len(dc_cat)
+    dlatloncat = pd.DataFrame({'lon':dc_lon, 'lat':dc_lat}, index=range(N))
+
+    #dt_query = [ find_nearest(dt_lat[i], dt_lon[i], dlatloncat) for i in range(len(dt_lon)) ]
+    #dt_nearest_lon = [ query[i][0] for i in range(len(query)) ]
+    #dt_nearest_lat = [ query[i][1] for i in range(len(query)) ]
+    #dt_nearest_cat = [ dc_cat.unique().astype(int)[0] for i in range(len(query)) ]
 
 if extract_stations == True:
 
@@ -309,6 +315,43 @@ if extract_stations == True:
     dt_filestr = 'dt'+'_'+ continent.lower().replace(' ','_') +'.csv'
     dt_in_continent.to_csv(dt_filestr)
                 
+if extract_arctic == True:
+
+    #------------------------------------------------------------------------------
+    # EXTRACT: stations in Arctic and write absolutes, anomalies and short-segment station lists to CSV
+    #------------------------------------------------------------------------------
+
+    print('extract_arctic ...')
+
+    decimalplaces = 1  
+    
+    ds_lat_in_continent = ds_lonlat[ds_lonlat['lat']>=60.0]['lat']
+    ds_lon_in_continent = ds_lonlat[ds_lonlat['lat']>=60.0]['lon']
+    ds_stationcode_in_continent = ds_lonlat[ds_lonlat['lat']>=60.0].index
+    ds_lat_in_continent = pd.Series(ds_lat_in_continent).apply(lambda x: round(x, decimalplaces))
+    ds_lon_in_continent = pd.Series(ds_lon_in_continent).apply(lambda x: round(x, decimalplaces))
+    ds_in_continent = pd.DataFrame({'stationcode':ds_stationcode_in_continent, 'stationlat':ds_lat_in_continent, 'stationlon':ds_lon_in_continent}).reset_index(drop=True)
+    ds_filestr = 'ds'+'_'+ continent.lower().replace(' ','_') +'.csv'
+    ds_in_continent.to_csv(ds_filestr)
+
+    da_lat_in_continent = da_lonlat[da_lonlat['lat']>=60.0]['lat']
+    da_lon_in_continent = da_lonlat[da_lonlat['lat']>=60.0]['lon']
+    da_stationcode_in_continent = da_lonlat[da_lonlat['lat']>=60.0].index
+    da_lat_in_continent = pd.Series(da_lat_in_continent).apply(lambda x: round(x, decimalplaces))
+    da_lon_in_continent = pd.Series(da_lon_in_continent).apply(lambda x: round(x, decimalplaces))
+    da_in_continent = pd.DataFrame({'stationcode':da_stationcode_in_continent, 'stationlat':da_lat_in_continent, 'stationlon':da_lon_in_continent}).reset_index(drop=True)
+    da_filestr = 'da'+'_'+ continent.lower().replace(' ','_') +'.csv'
+    da_in_continent.to_csv(da_filestr)
+
+    dt_lat_in_continent = dt_lonlat[dt_lonlat['lat']>=60.0]['lat']
+    dt_lon_in_continent = dt_lonlat[dt_lonlat['lat']>=60.0]['lon']
+    dt_stationcode_in_continent = dt_lonlat[dt_lonlat['lat']>=60.0].index
+    dt_lat_in_continent = pd.Series(dt_lat_in_continent).apply(lambda x: round(x, decimalplaces))
+    dt_lon_in_continent = pd.Series(dt_lon_in_continent).apply(lambda x: round(x, decimalplaces))
+    dt_in_continent = pd.DataFrame({'stationcode':dt_stationcode_in_continent, 'stationlat':dt_lat_in_continent, 'stationlon':dt_lon_in_continent}).reset_index(drop=True)
+    dt_filestr = 'dt'+'_'+ continent.lower().replace(' ','_') +'.csv'
+    dt_in_continent.to_csv(dt_filestr)
+
 #------------------------------------------------------------------------------
 # PLOTS
 #------------------------------------------------------------------------------
@@ -332,7 +375,7 @@ if plot_station_locations == True:
     if projection == 'geostationary': p = ccrs.Geostationary(central_longitude=0); threshold = 0
     if projection == 'goodehomolosine': p = ccrs.InterruptedGoodeHomolosine(central_longitude=0); threshold = 0
     if projection == 'europp': p = ccrs.EuroPP(); threshold = 0
-    if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(); threshold = 0
+    if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(central_longitude=-30); threshold = 0
     if projection == 'southpolarstereo': p = ccrs.SouthPolarStereo(); threshold = 0
     if projection == 'lambertconformal': p = ccrs.LambertConformal(central_longitude=0); threshold = 0
     if projection == 'winkeltripel': p = ccrs.WinkelTripel(central_longitude=0); threshold = 0
@@ -354,7 +397,7 @@ if plot_station_locations == True:
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
             gl.xlabel_style = {'size': fontsize}
-            gl.ylabel_style = {'size': fontsize}           
+            gl.ylabel_style = {'size': fontsize}                                   
     plt.scatter(x=dt_lon, y=dt_lat, 
                 color="red", s=1, alpha=0.5,
                 transform=ccrs.PlateCarree(), label='Global: N(short-segment stations)='+str(len(dt['stationcode'].unique()) - len(da['stationcode'].unique()) )) 
@@ -377,7 +420,7 @@ if plot_climgen_categories == True:
     figstr = 'climgen-categories.png'
     titlestr = 'ClimGen Categories'
      
-    categorystr = '0:Antarctica, 1:Europe, 2:ex-USSR, 3:Middle-East, 4:Asia, 5:Africa, 6:N America, 7:Central America, 8:S America, 9:Oceania, 10:Sea'
+    categorystr = '0:Antarctica, 1:Europe, 2:ex-USSR, 3:Middle-East, 4:Asia, 5:Africa, 6:N America, 7:Central America, 8:S America, 9:Oceania, 10:Sea'    
     
     fig  = plt.figure(figsize=(15,10))
     if projection == 'platecarree': p = ccrs.PlateCarree(central_longitude=0); threshold = 0
@@ -387,7 +430,7 @@ if plot_climgen_categories == True:
     if projection == 'geostationary': p = ccrs.Geostationary(central_longitude=0); threshold = 0
     if projection == 'goodehomolosine': p = ccrs.InterruptedGoodeHomolosine(central_longitude=0); threshold = 0
     if projection == 'europp': p = ccrs.EuroPP(); threshold = 0
-    if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(); threshold = 0
+    if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(central_longitude=-30); threshold = 0
     if projection == 'southpolarstereo': p = ccrs.SouthPolarStereo(); threshold = 0
     if projection == 'lambertconformal': p = ccrs.LambertConformal(central_longitude=0); threshold = 0
     if projection == 'winkeltripel': p = ccrs.WinkelTripel(central_longitude=0); threshold = 0
@@ -409,7 +452,7 @@ if plot_climgen_categories == True:
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
             gl.xlabel_style = {'size': fontsize}
-            gl.ylabel_style = {'size': fontsize}               
+            gl.ylabel_style = {'size': fontsize}                                                      
     plt.scatter(x=dc.lon, y=dc.lat, c=dc.cat,  
                 s=1, alpha=1.0, transform=ccrs.PlateCarree(), cmap=cmap, label=categorystr)      
 #    cb = plt.colorbar(orientation="horizontal", shrink=0.5, pad=0.05)    
@@ -432,7 +475,7 @@ if plot_continent_stations == True:
 
     figstr = 'short-v-long-segment-stations' + '-' + continent.lower().replace(' ','-') + '.png'
     titlestr = 'GloSAT.p03: N(stations)=' + str(len(dt['stationcode'].unique()))
-         
+             
     fig  = plt.figure(figsize=(15,10))
     if projection == 'platecarree': p = ccrs.PlateCarree(central_longitude=0); threshold = 0
     if projection == 'mollweide': p = ccrs.Mollweide(central_longitude=0); threshold = 1e6
@@ -441,23 +484,26 @@ if plot_continent_stations == True:
     if projection == 'geostationary': p = ccrs.Geostationary(central_longitude=0); threshold = 0
     if projection == 'goodehomolosine': p = ccrs.InterruptedGoodeHomolosine(central_longitude=0); threshold = 0
     if projection == 'europp': p = ccrs.EuroPP(); threshold = 0
-    if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(); threshold = 0
+    if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(central_longitude=-30); threshold = 0
     if projection == 'southpolarstereo': p = ccrs.SouthPolarStereo(); threshold = 0
     if projection == 'lambertconformal': p = ccrs.LambertConformal(central_longitude=0); threshold = 0
     if projection == 'winkeltripel': p = ccrs.WinkelTripel(central_longitude=0); threshold = 0
     ax = plt.axes(projection=p)        
     ax.set_global()
     ax.coastlines()
-    ax.add_feature(cartopy.feature.OCEAN, zorder=0, edgecolor=None)
+    ax.add_feature(cartopy.feature.OCEAN, zorder=0, edgecolor=None, alpha=1.0)	
+    ax.add_feature(cf.LAND, facecolor='white', zorder=1)
+    ax.add_feature(cf.COASTLINE, edgecolor="black", linewidth=0.7, zorder=1)
+    ax.add_feature(cf.BORDERS, edgecolor="black", linewidth=0.5, zorder=1)
     if shade_continent == True:
         projection = 'platecaree'
         p = ccrs.PlateCarree(central_longitude=0); threshold = 0 # --> needed by GeoPandas
-        ax.add_geometries(g, crs=p, facecolor='green', zorder=0, alpha=1.0, edgecolor='k')    
+        ax.add_geometries(g, crs=p, facecolor='green', zorder=1, alpha=1.0, edgecolor='k')    
     if show_gridlines == True:                      
         ax.gridlines()            
         if projection == 'platecarree':
             ax.set_extent([-180, 180, -90, 90], crs=p)    
-            gl = ax.gridlines(crs=p, draw_labels=False, linewidth=1, color='k', alpha=1.0, linestyle='-')
+            gl = ax.gridlines(crs=p, draw_labels=False, linewidth=1, color='k', alpha=1.0, linestyle='-', zorder=2)
             gl.xlabels_top = False
             gl.ylabels_right = False
             gl.xlines = True
@@ -467,14 +513,14 @@ if plot_continent_stations == True:
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
             gl.xlabel_style = {'size': fontsize}
-            gl.ylabel_style = {'size': fontsize}               
+            gl.ylabel_style = {'size': fontsize}                                                     
     plt.scatter(x=dt_lon_in_continent, y=dt_lat_in_continent, 
-                color="red", s=1, alpha=0.5,
+                color="red", s=20, alpha=0.5, zorder=2,
                 transform=ccrs.PlateCarree(), label=continent+': N(short-segment stations)='+str(len(ds_stationcode_in_continent)) ) 
     plt.scatter(x=da_lon_in_continent, y=da_lat_in_continent, 
-                color="blue", s=1, alpha=0.5,
+                color="blue", s=20, alpha=0.5, zorder=2,
                 transform=ccrs.PlateCarree(), label=continent+': N(stations with 1961-1990 normals)='+str(len(da_stationcode_in_continent)) ) 
-    plt.legend(loc='lower left', bbox_to_anchor=(0, -0.25), markerscale=6, facecolor='lightgrey', framealpha=1, fontsize=14)        
+    plt.legend(loc='lower left', bbox_to_anchor=(0, -0.15), markerscale=3, facecolor='lightgrey', framealpha=1, fontsize=16)        
     plt.title(titlestr, fontsize=fontsize, pad=0)
     plt.savefig(figstr, dpi=300)
     plt.close('all')

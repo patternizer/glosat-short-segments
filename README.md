@@ -1,6 +1,7 @@
+![image](https://github.com/patternizer/glosat-short-segments/blob/master/short-segment-method-poster-africa.png)
 ![image](https://github.com/patternizer/glosat-short-segments/blob/master/short-v-long-segment-stations-all.png)
-![image](https://github.com/patternizer/glosat-short-segments/blob/master/climgen-categories.png)
-![image](https://github.com/patternizer/glosat-short-segments/blob/master/segment_anomalies_station_20CRv3_estimate.png)
+![image](https://github.com/patternizer/glosat-short-segments/blob/master/short-v-long-segment-stations-africa.png)
+![image](https://github.com/patternizer/glosat-short-segments/blob/master/sshort-segment-method.png)
 
 # glosat-short-segments
 
@@ -8,8 +9,11 @@ Python code to extract short-segment LSAT absolute temperature timeseries for a 
 
 ## Contents
 
-* `lut-extract-short-segment-stations.py` - python code for plotting a single sparkline instance
-* `short-segment-analysis.py` - python code wrapper to generate a timeseries instance and plot with sparkline.py
+* `lut-extract-short-segment-stations.py` - python code for extracting stations per continent for the short-segment analysis
+* `short-segment-analysis-station.py` - python code to perform short-segment analysis at the station level
+* `short-segment-analysis-africa.py` - python code to perform short-segment analysis for all current GloSAT.p03 African stations and compare with the background 20CRv3 ensemble average
+* `short-segment-analysis-arctic.py` - python code to perform short-segment analysis for all current GloSAT.p03 Arctic stations and compare with the background 20CRv3 ensemble average
+
 
 The first step is to clone the latest glosat-short-segments code and step into the check out directory: 
 
@@ -25,7 +29,9 @@ glosat-short-segments scripts can be run from sources directly, once the python 
 Run with:
 
     $ python lut-extract-short-segment-stations.py
-    $ python short-segment-analysis.py
+    $ python short-segment-analysis-station.py
+    $ python short-segment-analysis-africa.py
+    $ python short-segment-analysis-arctic.py
 
 ## License
 
