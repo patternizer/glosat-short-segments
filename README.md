@@ -1,7 +1,7 @@
 ![image](https://github.com/patternizer/glosat-short-segments/blob/master/short-segment-method-poster-africa.png)
 ![image](https://github.com/patternizer/glosat-short-segments/blob/master/short-v-long-segment-stations-all.png)
 ![image](https://github.com/patternizer/glosat-short-segments/blob/master/short-v-long-segment-stations-africa.png)
-![image](https://github.com/patternizer/glosat-short-segments/blob/master/sshort-segment-method.png)
+![image](https://github.com/patternizer/glosat-short-segments/blob/master/short-segment-method.png)
 
 # glosat-short-segments
 
